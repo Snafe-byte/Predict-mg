@@ -45,7 +45,7 @@
         .odds-row { display: flex; gap: 8px; }
         .odd-item { flex: 1; background: var(--bg-body); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border); font-weight: 700; }
 
-        /* Zone d'administration masquée par défaut */
+        /* Zone d'administration */
         .admin-panel { background: #1e293b; color: white; border-radius: 12px; padding: 24px; margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
         .admin-title { font-size: 0.9rem; text-transform: uppercase; font-weight: 700; color: #38bdf8; }
         .admin-controls { display: none; gap: 10px; }
@@ -66,7 +66,7 @@
             <span id="system-status" style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">Flux public actif</span>
         </nav>
 
-        <!-- AFFICHAGE GENERAL (Ce que tout le monde voit si pas validé) -->
+        <!-- AFFICHAGE GENERAL (Public) -->
         <div class="main-card">
             <div class="section-label" id="sync-time">Mise à jour : --:--:--</div>
             <div class="live-match" id="live-teams">Chargement...</div>
@@ -106,11 +106,11 @@
     </div>
 
     <script>
-        // ⚠️ REMPLACEZ PAR VOTRE URL RENDER FINALE
-        const BACKEND_URL = "https://bet261-analytics-xxxx.onrender.com"; 
+        // Votre lien Render est maintenant configuré en permanence ici :
+        const BACKEND_URL = "https://predict-mg.onrender.com"; 
         let adminPassword = "";
 
-        // Fonction d'affichage public standard
+        // Fonction de récupération pour le flux public
         async function fetchPublicData() {
             try {
                 const response = await fetch(`${BACKEND_URL}/api/live-analysis`);
@@ -125,10 +125,10 @@
                     document.getElementById('oN').innerText = data.oN ? data.oN.toFixed(2) : '-';
                     document.getElementById('o2').innerText = data.o2 ? data.o2.toFixed(2) : '-';
                 }
-            } catch (err) { console.log(err); }
+            } catch (err) { console.log("Erreur de connexion au serveur Render."); }
         }
 
-        // Zone de validation
+        // Authentification admin
         async function checkAdminAuth() {
             const pass = document.getElementById('admin-pass').value;
             try {
@@ -145,14 +145,13 @@
                     document.getElementById('system-status').innerText = "Mode Administrateur Connecté";
                     updateAdminDashboard(data);
                 } else { alert("Clé de validation incorrecte."); }
-            } catch (e) { alert("Erreur serveur."); }
+            } catch (e) { alert("Erreur serveur : Vérifiez que Render est bien actif."); }
         }
 
         function updateAdminDashboard(data) {
             if(!data.match) return;
-            document.getElementById('preview-text').innerText = `[${data.match.teams}] -> Recommandation : ${data.match.prediction}`;
+            document.getElementById('preview-text').innerText = `[${data.match.teams}] -> ${data.match.prediction}`;
             
-            // En mode connecté, l'admin voit TOUJOURS les vraies cotes et calculs dans son panneau principal
             document.getElementById('sync-time').innerText = `Scan Admin : ${data.match.timestamp} (${data.isApproved ? 'DIFFUSÉ' : 'EN ATTENTE'})`;
             document.getElementById('live-teams').innerText = data.match.teams;
             document.getElementById('live-prediction').innerText = data.match.prediction;
@@ -169,22 +168,25 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: adminPassword, approve: approve })
                 });
-                alert(approve ? "Pronostic validé et publié !" : "Pronostic bloqué.");
+                alert(approve ? "Pronostic validé et publié !" : "Pronostic masqué.");
                 refreshAdmin();
-            } catch (e) { alert("Erreur d'envoi."); }
+            } catch (e) { alert("Erreur d'envoi de la commande."); }
         }
 
         async function refreshAdmin() {
             if (adminPassword === "") return;
-            const res = await fetch(`${BACKEND_URL}/api/admin/preview`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: adminPassword })
-            });
-            const data = await res.json();
-            updateAdminDashboard(data);
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                const data = await res.json();
+                updateAdminDashboard(data);
+            } catch (e) { console.log(e); }
         }
 
+        // Vérification automatique toutes les 5 secondes
         setInterval(() => { fetchPublicData(); refreshAdmin(); }, 5000);
         window.onload = fetchPublicData;
     </script>
