@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bet261 Analytique - Dashboard</title>
+    <style>
+        :root {
+            --bg-body: #f4f7f9;
+            --bg-card: #ffffff;
+            --turquoise: #0ea5e9;
+            --turquoise-dark: #0369a1;
+            --turquoise-light: #e0f2fe;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-dark); padding: 30px 15px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 850px; }
+
+        nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .logo { font-size: 1.25rem; font-weight: 800; color: var(--turquoise-dark); text-transform: uppercase; }
+        
+        .main-card {
+            background: var(--bg-card); border-radius: 16px; padding: 32px;
+            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.08);
+            border: 1px solid var(--border); margin-bottom: 24px; position: relative; overflow: hidden;
+        }
+        .main-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, var(--turquoise), #38bdf8); }
+        
+        .section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--turquoise); letter-spacing: 0.05em; margin-bottom: 8px; }
+        .live-match { font-size: 1.4rem; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
+        
+        .signal-display { font-size: 1.8rem; font-weight: 800; color: var(--text-dark); margin-bottom: 12px; }
+        .signal-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
+
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .card-stat { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+        .card-title { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; }
+
+        .odds-row { display: flex; gap: 8px; }
+        .odd-item { flex: 1; background: var(--bg-body); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--border); font-weight: 700; }
+
+        /* Zone d'administration masquée par défaut */
+        .admin-panel { background: #1e293b; color: white; border-radius: 12px; padding: 24px; margin-top: 30px; display: flex; flex-direction: column; gap: 15px; }
+        .admin-title { font-size: 0.9rem; text-transform: uppercase; font-weight: 700; color: #38bdf8; }
+        .admin-controls { display: none; gap: 10px; }
+        
+        button { border: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.85rem; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-approve { background: var(--success); color: white; flex: 1; }
+        .btn-reject { background: var(--danger); color: white; flex: 1; }
+        
+        input[type="password"] { background: #334155; border: 1px solid #475569; padding: 10px; border-radius: 8px; color: white; width: 100%; max-width: 300px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <nav>
+            <div class="logo">Bet261 <span>Secure Stream</span></div>
+            <span id="system-status" style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">Flux public actif</span>
+        </nav>
+
+        <!-- AFFICHAGE GENERAL (Ce que tout le monde voit si pas validé) -->
+        <div class="main-card">
+            <div class="section-label" id="sync-time">Mise à jour : --:--:--</div>
+            <div class="live-match" id="live-teams">Chargement...</div>
+            <div class="section-label">Statut du Signal</div>
+            <div class="signal-display" id="live-prediction">Analyse...</div>
+            <div class="signal-desc" id="live-reason">Connexion...</div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="card-stat">
+                <div class="card-title">Cotes Actuelles</div>
+                <div class="odds-row">
+                    <div class="odd-item" id="o1">-</div>
+                    <div class="odd-item" id="oN">-</div>
+                    <div class="odd-item" id="o2">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION DE CONTROLE DE L'ADMINISTRATEUR -->
+        <div class="admin-panel">
+            <div class="admin-title">🔒 Console de Validation Super-Admin</div>
+            
+            <div id="auth-zone">
+                <input type="password" id="admin-pass" placeholder="Entrez votre clé de validation...">
+                <button onclick="checkAdminAuth()" style="background: var(--turquoise); color: white; margin-left: 10px;">Connexion</button>
+            </div>
+
+            <div id="control-zone" class="admin-controls">
+                <div style="width: 100%; margin-bottom: 10px; font-size: 0.9rem; background: #334155; padding: 12px; border-radius: 6px;">
+                    <strong>👀 Aperçu secret du match calculé :</strong> <span id="preview-text">Aucun match détecté</span>
+                </div>
+                <button class="btn-approve" onclick="sendAction(true)">✅ Diffuser le pronostic au public</button>
+                <button class="btn-reject" onclick="sendAction(false)">❌ Bloquer / Masquer l'analyse</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ REMPLACEZ PAR VOTRE URL RENDER FINALE
+        const BACKEND_URL = "https://bet261-analytics-xxxx.onrender.com"; 
+        let adminPassword = "";
+
+        // Fonction d'affichage public standard
+        async function fetchPublicData() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/live-analysis`);
+                const data = await response.json();
+
+                if (adminPassword === "") {
+                    document.getElementById('sync-time').innerText = `Scan : ${data.timestamp}`;
+                    document.getElementById('live-teams').innerText = data.teams;
+                    document.getElementById('live-prediction').innerText = data.prediction;
+                    document.getElementById('live-reason').innerText = data.reason;
+                    document.getElementById('o1').innerText = data.o1 ? data.o1.toFixed(2) : '-';
+                    document.getElementById('oN').innerText = data.oN ? data.oN.toFixed(2) : '-';
+                    document.getElementById('o2').innerText = data.o2 ? data.o2.toFixed(2) : '-';
+                }
+            } catch (err) { console.log(err); }
+        }
+
+        // Zone de validation
+        async function checkAdminAuth() {
+            const pass = document.getElementById('admin-pass').value;
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                if (res.status === 200) {
+                    const data = await res.json();
+                    adminPassword = pass;
+                    document.getElementById('auth-zone').style.display = 'none';
+                    document.getElementById('control-zone').style.display = 'flex';
+                    document.getElementById('system-status').innerText = "Mode Administrateur Connecté";
+                    updateAdminDashboard(data);
+                } else { alert("Clé de validation incorrecte."); }
+            } catch (e) { alert("Erreur serveur."); }
+        }
+
+        function updateAdminDashboard(data) {
+            if(!data.match) return;
+            document.getElementById('preview-text').innerText = `[${data.match.teams}] -> Recommandation : ${data.match.prediction}`;
+            
+            // En mode connecté, l'admin voit TOUJOURS les vraies cotes et calculs dans son panneau principal
+            document.getElementById('sync-time').innerText = `Scan Admin : ${data.match.timestamp} (${data.isApproved ? 'DIFFUSÉ' : 'EN ATTENTE'})`;
+            document.getElementById('live-teams').innerText = data.match.teams;
+            document.getElementById('live-prediction').innerText = data.match.prediction;
+            document.getElementById('live-reason').innerText = data.match.reason;
+            document.getElementById('o1').innerText = data.match.o1.toFixed(2);
+            document.getElementById('oN').innerText = data.match.oN.toFixed(2);
+            document.getElementById('o2').innerText = data.match.o2.toFixed(2);
+        }
+
+        async function sendAction(approve) {
+            try {
+                await fetch(`${BACKEND_URL}/api/admin/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, approve: approve })
+                });
+                alert(approve ? "Pronostic validé et publié !" : "Pronostic bloqué.");
+                refreshAdmin();
+            } catch (e) { alert("Erreur d'envoi."); }
+        }
+
+        async function refreshAdmin() {
+            if (adminPassword === "") return;
+            const res = await fetch(`${BACKEND_URL}/api/admin/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: adminPassword })
+            });
+            const data = await res.json();
+            updateAdminDashboard(data);
+        }
+
+        setInterval(() => { fetchPublicData(); refreshAdmin(); }, 5000);
+        window.onload = fetchPublicData;
+    </script>
+</body>
+</html>
